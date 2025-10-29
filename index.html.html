@@ -1,0 +1,453 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mini-Budget</title>
+  <meta name="theme-color" content="#e9e3da">
+  <style>
+    /* ====== Modern Beige/Grau Theme ====== */
+    :root{
+      --bg:#f6f4ef;          /* warm beige background */
+      --surface:#ffffff;     /* cards */
+      --ink:#222222;         /* primary text */
+      --muted:#6f6b63;       /* muted text */
+      --border:#e7e2da;      /* soft border */
+      --soft:#f0ece6;        /* soft pill background */
+      --accent:#6b705c;      /* sage green accent */
+      --accent-ink:#ffffff;
+      --danger:#b23b3b;
+      --shadow: 0 10px 20px rgba(0,0,0,.04), 0 2px 6px rgba(0,0,0,.04);
+      --radius:16px;
+    }
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0; background:var(--bg); color:var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans, Apple Color Emoji, Segoe UI Emoji;
+      -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+    }
+    .container{ max-width:980px; margin:0 auto; padding:18px; }
+    header{
+      position:sticky; top:0; z-index:10;
+      backdrop-filter: blur(6px);
+      background: color-mix(in oklab, var(--bg) 86%, white);
+      border-bottom:1px solid var(--border);
+      margin: -18px -18px 16px; padding: 12px 18px;
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+    }
+    .brand{ display:flex; align-items:center; gap:10px; }
+    .logo{
+      width:28px; height:28px; border-radius:8px; background:linear-gradient(135deg, var(--accent), #8b8f7a);
+      box-shadow: var(--shadow);
+    }
+    h1{ font-size:18px; margin:0; letter-spacing:.2px; }
+    .toolbar{ display:flex; flex-wrap:wrap; gap:8px; }
+
+    .grid{ display:grid; gap:14px; }
+    .grid.cols-2{ grid-template-columns: 1fr; }
+    .grid.cols-3{ grid-template-columns: 1fr; }
+    @media(min-width:720px){
+      .grid.cols-2{ grid-template-columns: 1fr 1fr; }
+      .grid.cols-3{ grid-template-columns: 1fr 1fr 1fr; }
+    }
+
+    .card{
+      background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+      box-shadow: var(--shadow); padding:16px;
+    }
+    .card h2{ font-size:16px; margin:0 0 10px; letter-spacing:.2px; }
+    .section-sub{ font-size:12px; color:var(--muted); margin:-6px 0 10px; }
+
+    label{ display:block; font-size:12px; color:var(--muted); margin: 0 0 6px; }
+    input, button, textarea{ font: inherit; }
+    input[type="text"], input[type="number"], input[type="date"], input[type="month"], textarea{
+      width:100%; padding:12px 14px; border:1px solid var(--border); border-radius:12px; background:#fff;
+      transition: border-color .15s, box-shadow .15s, background .15s;
+    }
+    input:focus, textarea:focus{ outline:none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent); }
+
+    .btn{
+      padding:10px 14px; border-radius:12px; border:1px solid var(--border); background:#fff; cursor:pointer;
+      transition: transform .04s ease, background .2s, border-color .2s, color .2s;
+    }
+    .btn:hover{ background: #fafafa; }
+    .btn:active{ transform: translateY(1px); }
+    .btn.primary{ background:var(--accent); color:var(--accent-ink); border-color: var(--accent); }
+    .btn.ghost{ background:transparent; }
+    .btn.danger{ color:#7a1717; border-color:#e9c9c9; background:#fff5f5; }
+
+    .btn-row{ display:flex; flex-wrap:wrap; gap:8px; }
+
+    .summary{ display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
+    @media(min-width:900px){ .summary{ grid-template-columns: repeat(3, 1fr); } }
+    .box{
+      padding:14px; border:1px solid var(--border); background:var(--soft); border-radius:14px;
+      display:flex; flex-direction:column; gap:4px;
+    }
+    .box .label{ font-size:12px; color:var(--muted); }
+    .box .value{ font-size:20px; font-weight:700; letter-spacing:.2px; }
+
+    .preset-bar{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+    .pill{ padding:8px 12px; border-radius:999px; background:var(--soft); border:1px solid var(--border); font-size:13px; cursor:pointer; }
+    .pill:hover{ background:#ebe7e0; }
+
+    .cost-row{ display:grid; grid-template-columns: 1.2fr .7fr .6fr 38px; gap:8px; align-items:center; }
+    .muted{ color:var(--muted); font-size:12px; }
+    .divider{ height:1px; background: var(--border); margin:10px 0; }
+
+    footer.note{ text-align:center; color:var(--muted); font-size:12px; padding:18px 0; }
+
+    @media print{
+      header, .print-hide{ display:none !important; }
+      body{ background:#fff; }
+      .container{ padding:0; }
+      .card{ box-shadow:none; border-color:#ddd; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="print-hide">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <h1>Budgetübersicht</h1>
+      </div>
+      <div class="toolbar">
+        <button class="btn" id="printBtn">Drucken/PDF</button>
+        <button class="btn" id="copyBtn">Zusammenfassung kopieren</button>
+        <button class="btn primary" id="saveBtn">Speichern</button>
+      </div>
+    </header>
+
+    <div class="card">
+      <h2>Monat & Basis</h2>
+      <p class="section-sub">Wähle den Monat und nimm Werte vom Vormonat mit, wenn du möchtest.</p>
+      <div class="grid cols-2">
+        <div>
+          <label>Monat</label>
+          <input type="month" id="monthInput">
+        </div>
+        <div class="btn-row" style="align-items:end;">
+          <button class="btn" id="dupBtn">Vormonat übernehmen</button>
+          <button class="btn danger" id="clearBtn">Monat leeren</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid cols-2" style="margin-top:14px;">
+      <div class="card">
+        <h2>Einkommen & Sparen</h2>
+        <div class="grid cols-2">
+          <div>
+            <label>Netto-Einkommen (Monat)</label>
+            <input type="text" id="incomeInput" placeholder="z. B. 1.500,00">
+          </div>
+          <div>
+            <label>Empf. Sparrate (%)</label>
+            <input type="number" id="savePct" min="0" max="50" value="10">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Zusammenfassung</h2>
+        <div class="summary">
+          <div class="box">
+            <div class="label">Gesamteinnahmen</div>
+            <div class="value" id="sumIncome">€ 0,00</div>
+          </div>
+          <div class="box">
+            <div class="label">Gesamte Fixkosten</div>
+            <div class="value" id="sumFix">€ 0,00</div>
+          </div>
+          <div class="box">
+            <div class="label" id="saveLabel">Empfohlen sparen (10%)</div>
+            <div class="value" id="sumSave">€ 0,00</div>
+          </div>
+          <div class="box">
+            <div class="label">Rest nach Fix & Sparen</div>
+            <div class="value" id="sumRest">€ 0,00</div>
+          </div>
+          <div class="box">
+            <div class="label">Tagesbudget (Ø)</div>
+            <div class="value" id="perDay">€ 0,00</div>
+          </div>
+          <div class="box">
+            <div class="label">Tage im Monat</div>
+            <div class="value" id="daysInMonth">30</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <h2>Fixkosten</h2>
+      <p class="section-sub">Lege deine Fixkosten fest. Nutze die Vorlagen oder füge eigene Posten hinzu.</p>
+      <div class="preset-bar print-hide" id="presetBar"></div>
+      <div class="divider"></div>
+      <div id="costList"></div>
+      <div class="btn-row print-hide" style="margin-top:10px;">
+        <button class="btn" id="addCost">+ Eigener Posten</button>
+      </div>
+      <div class="muted" style="margin-top:8px;">Tipp: „Fällig“ = Tag im Monat (z. B. 1 = am 1.)</div>
+    </div>
+
+    <div class="grid cols-2" style="margin-top:14px;">
+      <div class="card">
+        <h2>Notizen</h2>
+        <label>Notizen / Ziele / Besonderheiten</label>
+        <textarea id="notes" placeholder="z. B. Handyvertrag ab Mai günstiger, Versicherungswechsel, etc."></textarea>
+      </div>
+      <div class="card">
+        <h2>Unterschrift</h2>
+        <div class="grid cols-2">
+          <div>
+            <label>Unterschrift (Name)</label>
+            <input type="text" id="sigName" placeholder="Name">
+          </div>
+          <div>
+            <label>Datum</label>
+            <input type="date" id="sigDate">
+          </div>
+        </div>
+        <div style="margin-top:12px;">
+          <label><input type="checkbox" id="signed"> Monat geprüft & unterschrieben</label>
+        </div>
+      </div>
+    </div>
+
+    <footer class="note print-hide">
+      iOS/Android-Tipp: Im Browser „Zum Startbildschirm hinzufügen“ – wirkt wie eine App und funktioniert offline (Daten bleiben lokal).
+    </footer>
+  </div>
+
+  <script>
+    const euro = (n) => (new Intl.NumberFormat('de-AT', { style:'currency', currency:'EUR' })).format(isFinite(n?n:0)? n:0);
+    const parseNum = (v) => {
+      if(!v) return 0;
+      const s = v.toString().replace(/[^.\-0-9,]/g, '').replace('.', '').replace(',', '.');
+      const n = parseFloat(s);
+      return isNaN(n) ? 0 : n;
+    };
+    const monthKey = (ym) => `budget_${ym}`;
+    const todayYM = () => new Date().toISOString().slice(0,7);
+    const dim = (ym) => { const [y,m] = ym.split('-').map(Number); return new Date(y, m, 0).getDate(); };
+
+    const presetItems = [
+      { name:'Miete', amount:0, due:1 },
+      { name:'Handyvertrag', amount:0, due:1 },
+      { name:'Internet', amount:0, due:1 },
+      { name:'Strom/Gas', amount:0, due:5 },
+      { name:'Versicherungen', amount:0, due:10 },
+      { name:'Abos (Netflix/Spotify)', amount:0, due:1 },
+      { name:'Öffi/Auto', amount:0, due:1 },
+      { name:'Lebensmittel (Ø)', amount:0, due:1 },
+    ];
+
+    let costs = [];
+    // Elements
+    const monthInput = document.getElementById('monthInput');
+    const incomeInput = document.getElementById('incomeInput');
+    const savePctInput = document.getElementById('savePct');
+    const costList = document.getElementById('costList');
+    const notesEl = document.getElementById('notes');
+    const sigNameEl = document.getElementById('sigName');
+    const sigDateEl = document.getElementById('sigDate');
+    const signedEl = document.getElementById('signed');
+    const printBtn = document.getElementById('printBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const dupBtn = document.getElementById('dupBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const addCostBtn = document.getElementById('addCost');
+    const presetBar = document.getElementById('presetBar');
+
+    const sumIncome = document.getElementById('sumIncome');
+    const sumFix = document.getElementById('sumFix');
+    const sumSave = document.getElementById('sumSave');
+    const sumRest = document.getElementById('sumRest');
+    const perDay = document.getElementById('perDay');
+    const daysInMonthEl = document.getElementById('daysInMonth');
+    const saveLabel = document.getElementById('saveLabel');
+
+    function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+    function renderCosts(){
+      costList.innerHTML = '';
+      if(costs.length === 0){
+        const div = document.createElement('div');
+        div.className = 'muted';
+        div.textContent = 'Noch keine Fixkosten angelegt. Nutze die Vorlagen oder füge Posten hinzu.';
+        costList.appendChild(div);
+        return;
+      }
+      costs.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'cost-row';
+        const name = document.createElement('input');
+        name.type = 'text';
+        name.value = item.name;
+        name.addEventListener('input', e => { item.name = e.target.value; updateSummary(); });
+
+        const amount = document.createElement('input');
+        amount.type = 'text';
+        amount.placeholder = 'Betrag';
+        amount.value = item.amount?.toString().replace('.', ',') || '';
+        amount.addEventListener('input', e => { item.amount = parseNum(e.target.value); updateSummary(); });
+
+        const due = document.createElement('input');
+        due.type = 'number'; due.min = 1; due.max = 31;
+        due.placeholder = 'Fällig';
+        due.value = item.due || '';
+        due.addEventListener('input', e => { const v = e.target.value; item.due = v? parseInt(v): undefined; });
+
+        const del = document.createElement('button');
+        del.className = 'btn'; del.textContent = '🗑️';
+        del.addEventListener('click', ()=>{ costs = costs.filter(c=>c !== item); renderCosts(); updateSummary(); });
+
+        row.appendChild(name);
+        row.appendChild(amount);
+        row.appendChild(due);
+        row.appendChild(del);
+        costList.appendChild(row);
+      });
+    }
+
+    function renderPresets(){
+      presetBar.innerHTML = '';
+      presetItems.forEach(p => {
+        const b = document.createElement('div');
+        b.className = 'pill';
+        b.textContent = '+ ' + p.name;
+        b.addEventListener('click', ()=>{
+          costs.push({ id: uid(), name:p.name, amount:p.amount||0, due:p.due });
+          renderCosts(); updateSummary();
+        });
+        presetBar.appendChild(b);
+      });
+    }
+
+    function updateSummary(){
+      const incomeNum = parseNum(incomeInput.value);
+      const totalFix = costs.reduce((s,c)=> s + (c.amount||0), 0);
+      const savePercent = parseInt(savePctInput.value||'0');
+      const recSave = Math.max(0, incomeNum * (savePercent/100));
+      const restAfterFix = Math.max(0, incomeNum - totalFix);
+      const restAfterSave = Math.max(0, restAfterFix - recSave);
+      const days = dim(monthInput.value || todayYM());
+
+      sumIncome.textContent = euro(incomeNum);
+      sumFix.textContent = euro(totalFix);
+      saveLabel.textContent = 'Empfohlen sparen (' + savePercent + '%)';
+      sumSave.textContent = euro(recSave);
+      sumRest.textContent = euro(restAfterSave);
+      perDay.textContent = euro(restAfterSave / days);
+      daysInMonthEl.textContent = days;
+    }
+
+    function saveLocal(){
+      const payload = {
+        income: parseNum(incomeInput.value),
+        savePct: parseInt(savePctInput.value||'10'),
+        costs, notes: notesEl.value, sigName: sigNameEl.value, sigDate: sigDateEl.value, signed: signedEl.checked
+      };
+      localStorage.setItem(monthKey(monthInput.value), JSON.stringify(payload));
+      alert('Gespeichert.');
+    }
+
+    function loadMonth(ymVal){
+      const raw = localStorage.getItem(monthKey(ymVal));
+      if(raw){
+        try{
+          const d = JSON.parse(raw);
+          incomeInput.value = (d.income ?? 0).toString().replace('.', ',');
+          savePctInput.value = d.savePct ?? 10;
+          costs = Array.isArray(d.costs)? d.costs : [];
+          notesEl.value = d.notes ?? '';
+          sigNameEl.value = d.sigName ?? '';
+          sigDateEl.value = d.sigDate ?? '';
+          signedEl.checked = !!d.signed;
+        }catch{ costs = []; }
+      }else{
+        incomeInput.value = '';
+        savePctInput.value = 10;
+        costs = [];
+        notesEl.value = '';
+        sigNameEl.value = '';
+        sigDateEl.value = '';
+        signedEl.checked = false;
+      }
+      renderCosts();
+      updateSummary();
+    }
+
+    function dupPrev(){
+      const ymVal = monthInput.value;
+      const [y,m] = ymVal.split('-').map(Number);
+      const prev = (m===1) ? `${y-1}-12` : `${y}-${String(m-1).padStart(2, '0')}`;
+      const raw = localStorage.getItem(monthKey(prev));
+      if(raw){
+        const d = JSON.parse(raw);
+        incomeInput.value = (d.income ?? 0).toString().replace('.', ',');
+        savePctInput.value = d.savePct ?? 10;
+        costs = Array.isArray(d.costs)? d.costs : [];
+        notesEl.value = '';
+        sigNameEl.value = '';
+        sigDateEl.value = '';
+        signedEl.checked = false;
+        renderCosts(); updateSummary();
+      } else {
+        alert('Kein Vormonat gefunden.');
+      }
+    }
+
+    function clearMonth(){
+      if(confirm('Alle Eingaben für diesen Monat löschen?')){
+        localStorage.removeItem(monthKey(monthInput.value));
+        loadMonth(monthInput.value);
+      }
+    }
+
+    function copySummary(){
+      const lines = [];
+      const inc = sumIncome.textContent;
+      const fix = sumFix.textContent;
+      const save = sumSave.textContent;
+      const rest = sumRest.textContent;
+      const per = perDay.textContent;
+      lines.push(`Budget ${monthInput.value}`);
+      lines.push(`Einkommen: ${inc}`);
+      lines.push(`Fixkosten: ${fix}`);
+      lines.push(`Empf. Sparen: ${save}`);
+      lines.push(`Rest nach Fix & Sparen: ${rest}`);
+      lines.push(`Tagesbudget (Ø): ${per}`);
+      lines.push('— Fixkosten —');
+      costs.forEach(c => lines.push(`• ${c.name}${c.due? ' (fällig am '+c.due+'.)' : ''}: ${euro(c.amount||0)}`));
+      navigator.clipboard.writeText(lines.join('\n')).then(()=>{
+        alert('Zusammenfassung kopiert.');
+      }).catch(()=>{});
+    }
+
+    // Init
+    monthInput.value = todayYM();
+    renderPresets();
+    loadMonth(monthInput.value);
+
+    // Events
+    monthInput.addEventListener('change', ()=> loadMonth(monthInput.value));
+    incomeInput.addEventListener('input', updateSummary);
+    savePctInput.addEventListener('input', updateSummary);
+    document.getElementById('addCost').addEventListener('click', () => {
+      costs.push({ id: uid(), name:'Neuer Posten', amount:0, due:1 });
+      renderCosts(); updateSummary();
+    });
+    dupBtn.addEventListener('click', dupPrev);
+    clearBtn.addEventListener('click', clearMonth);
+    printBtn.addEventListener('click', ()=> window.print());
+    copyBtn.addEventListener('click', copySummary);
+    saveBtn.addEventListener('click', saveLocal);
+  </script>
+</body>
+</html>
